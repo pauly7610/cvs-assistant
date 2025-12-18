@@ -1,4 +1,4 @@
-// Analytics tracking utility for user journey tracking
+// Analytics tracking utility
 
 type EventType = 
   | 'page_view'
@@ -11,9 +11,7 @@ type EventType =
   | 'refill_requested'
   | 'pharmacist_escalation'
   | 'emergency_triggered'
-  | 'error'
-  | 'session_start'
-  | 'session_end';
+  | 'error';
 
 interface AnalyticsEvent {
   eventType: EventType;
@@ -22,33 +20,12 @@ interface AnalyticsEvent {
   pagePath?: string;
 }
 
-interface SessionData {
-  sessionId: string;
-  startedAt: Date;
-  pageViews: number;
-  messagesSent: number;
-  intentsTriggered: string[];
-}
-
 class Analytics {
   private sessionId: string;
   private userId: string | null = null;
-  private sessionData: SessionData;
-  private isEnabled: boolean = true;
 
   constructor() {
-    this.sessionId = this.generateSessionId();
-    this.sessionData = {
-      sessionId: this.sessionId,
-      startedAt: new Date(),
-      pageViews: 0,
-      messagesSent: 0,
-      intentsTriggered: [],
-    };
-  }
-
-  private generateSessionId(): string {
-    return `sess_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    this.sessionId = `sess_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }
 
   private getDeviceType(): 'mobile' | 'tablet' | 'desktop' {
@@ -63,17 +40,7 @@ class Analytics {
     this.userId = userId;
   }
 
-  disable() {
-    this.isEnabled = false;
-  }
-
-  enable() {
-    this.isEnabled = true;
-  }
-
   async track(event: AnalyticsEvent): Promise<void> {
-    if (!this.isEnabled) return;
-
     const payload = {
       userId: this.userId || 'anonymous',
       sessionId: this.sessionId,
@@ -81,20 +48,8 @@ class Analytics {
       eventName: event.eventName,
       eventData: event.eventData || {},
       pagePath: event.pagePath || (typeof window !== 'undefined' ? window.location.pathname : '/'),
-      referrer: typeof document !== 'undefined' ? document.referrer : '',
-      userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : '',
       deviceType: this.getDeviceType(),
-      timestamp: new Date().toISOString(),
     };
-
-    // Update session data
-    if (event.eventType === 'page_view') {
-      this.sessionData.pageViews++;
-    } else if (event.eventType === 'message_sent') {
-      this.sessionData.messagesSent++;
-    } else if (event.eventType === 'intent_triggered' && event.eventData?.intent) {
-      this.sessionData.intentsTriggered.push(event.eventData.intent as string);
-    }
 
     try {
       await fetch('/api/analytics', {
@@ -102,149 +57,45 @@ class Analytics {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
-    } catch (error) {
-      // Silent fail - don't break UX for analytics
-      console.debug('Analytics tracking failed:', error);
+    } catch {
+      // Silent fail
     }
   }
 
-  // Convenience methods
   pageView(pagePath?: string) {
-    this.track({
-      eventType: 'page_view',
-      eventName: 'Page Viewed',
-      pagePath,
-    });
+    this.track({ eventType: 'page_view', eventName: 'Page Viewed', pagePath });
   }
 
   chatStarted() {
-    this.track({
-      eventType: 'chat_started',
-      eventName: 'Chat Session Started',
-    });
+    this.track({ eventType: 'chat_started', eventName: 'Chat Started' });
   }
 
-  messageSent(messageLength: number, isFirstMessage: boolean = false) {
-    this.track({
-      eventType: 'message_sent',
-      eventName: 'User Message Sent',
-      eventData: { messageLength, isFirstMessage },
-    });
+  messageSent(messageLength: number) {
+    this.track({ eventType: 'message_sent', eventName: 'Message Sent', eventData: { messageLength } });
   }
 
-  intentTriggered(intent: string, confidence?: number) {
-    this.track({
-      eventType: 'intent_triggered',
-      eventName: 'Intent Triggered',
-      eventData: { intent, confidence },
-    });
+  intentTriggered(intent: string) {
+    this.track({ eventType: 'intent_triggered', eventName: 'Intent Triggered', eventData: { intent } });
   }
 
-  cardAction(actionType: string, cardType: string, metadata?: Record<string, unknown>) {
-    this.track({
-      eventType: 'card_action',
-      eventName: 'Card Action Clicked',
-      eventData: { actionType, cardType, ...metadata },
-    });
+  cardAction(actionType: string, cardType: string) {
+    this.track({ eventType: 'card_action', eventName: 'Card Action', eventData: { actionType, cardType } });
   }
 
-  appointmentBooked(appointmentId: string, appointmentType: string) {
-    this.track({
-      eventType: 'appointment_booked',
-      eventName: 'Appointment Booked',
-      eventData: { appointmentId, appointmentType },
-    });
+  prescriptionChecked(name: string, status: string) {
+    this.track({ eventType: 'prescription_checked', eventName: 'Prescription Checked', eventData: { name, status } });
   }
 
-  prescriptionChecked(prescriptionName: string, status: string) {
-    this.track({
-      eventType: 'prescription_checked',
-      eventName: 'Prescription Status Checked',
-      eventData: { prescriptionName, status },
-    });
-  }
-
-  refillRequested(prescriptionName: string) {
-    this.track({
-      eventType: 'refill_requested',
-      eventName: 'Refill Requested',
-      eventData: { prescriptionName },
-    });
+  refillRequested(name: string) {
+    this.track({ eventType: 'refill_requested', eventName: 'Refill Requested', eventData: { name } });
   }
 
   pharmacistEscalation(reason?: string) {
-    this.track({
-      eventType: 'pharmacist_escalation',
-      eventName: 'Pharmacist Escalation Requested',
-      eventData: { reason },
-    });
+    this.track({ eventType: 'pharmacist_escalation', eventName: 'Pharmacist Escalation', eventData: { reason } });
   }
 
   emergencyTriggered(keyword: string) {
-    this.track({
-      eventType: 'emergency_triggered',
-      eventName: 'Emergency Keywords Detected',
-      eventData: { keyword },
-    });
-  }
-
-  error(errorType: string, errorMessage: string, component?: string) {
-    this.track({
-      eventType: 'error',
-      eventName: 'Error Occurred',
-      eventData: { errorType, errorMessage, component },
-    });
-  }
-
-  // Funnel tracking
-  async trackFunnel(
-    funnelName: string,
-    stepName: string,
-    stepOrder: number,
-    completed: boolean = true,
-    metadata?: Record<string, unknown>
-  ) {
-    if (!this.isEnabled) return;
-
-    try {
-      await fetch('/api/analytics/funnel', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: this.userId || 'anonymous',
-          sessionId: this.sessionId,
-          funnelName,
-          stepName,
-          stepOrder,
-          completed,
-          metadata,
-        }),
-      });
-    } catch (error) {
-      console.debug('Funnel tracking failed:', error);
-    }
-  }
-
-  // Feature usage tracking
-  async trackFeatureUsage(featureName: string) {
-    if (!this.isEnabled) return;
-
-    try {
-      await fetch('/api/analytics/feature', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: this.userId || 'anonymous',
-          featureName,
-        }),
-      });
-    } catch (error) {
-      console.debug('Feature tracking failed:', error);
-    }
-  }
-
-  getSessionData(): SessionData {
-    return { ...this.sessionData };
+    this.track({ eventType: 'emergency_triggered', eventName: 'Emergency Triggered', eventData: { keyword } });
   }
 
   getSessionId(): string {
@@ -252,8 +103,4 @@ class Analytics {
   }
 }
 
-// Singleton instance
 export const analytics = new Analytics();
-
-// Export types
-export type { EventType, AnalyticsEvent, SessionData };
