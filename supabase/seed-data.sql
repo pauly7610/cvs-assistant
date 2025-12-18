@@ -248,6 +248,57 @@ INSERT INTO prescription_notifications (user_id, prescription_id, prescription_n
 ('user_demo3', 'mock-rx-013', 'Montelukast 10mg', 'CVS Pharmacy #4521 - Main Street', 'ready', 'pending');
 
 -- ============================================
+-- ESCALATION TRIGGERS (Anti-troll responses)
+-- ============================================
+CREATE TABLE IF NOT EXISTS escalation_triggers (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  trigger_phrase TEXT NOT NULL,
+  category TEXT NOT NULL CHECK (category IN ('agent_request', 'frustration', 'spam', 'test', 'inappropriate')),
+  response TEXT NOT NULL,
+  action TEXT DEFAULT 'respond',
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+INSERT INTO escalation_triggers (trigger_phrase, category, response, action) VALUES
+-- Agent/Human requests
+('agent', 'agent_request', 'I understand you''d like to speak with someone directly. I can connect you with a CVS pharmacist who can help. Would you like me to request a callback?', 'offer_callback'),
+('representative', 'agent_request', 'I''d be happy to connect you with a CVS team member. Would you prefer to speak with a pharmacist, or would you like the MinuteClinic number?', 'offer_callback'),
+('human', 'agent_request', 'I can arrange for a CVS pharmacist to call you back within 15 minutes. Would that work for you?', 'offer_callback'),
+('real person', 'agent_request', 'Absolutely, I can connect you with our pharmacy team. They''re available to help with any questions I can''t answer. Shall I request a callback?', 'offer_callback'),
+('talk to someone', 'agent_request', 'Of course! I can connect you with a CVS pharmacist. Would you like a callback, or would you prefer the pharmacy direct line?', 'offer_callback'),
+('speak to someone', 'agent_request', 'I''d be glad to help you reach our team. Would you like to speak with a pharmacist or schedule a MinuteClinic visit?', 'offer_callback'),
+('live agent', 'agent_request', 'I can connect you with our pharmacy team right away. Would you like me to request a callback?', 'offer_callback'),
+('transfer', 'agent_request', 'I can transfer you to a CVS pharmacist. They typically call back within 10-15 minutes. Would you like me to arrange that?', 'offer_callback'),
+('manager', 'agent_request', 'I understand you''d like to speak with someone in charge. I can connect you with our pharmacy team who can address your concerns. Would that help?', 'offer_callback'),
+('supervisor', 'agent_request', 'I can escalate your concern to our pharmacy team. Would you like me to request a callback from a senior pharmacist?', 'offer_callback'),
+
+-- Frustration
+('this is useless', 'frustration', 'I''m sorry I haven''t been able to help. Let me connect you with a CVS pharmacist who can assist you directly. Would you like a callback?', 'offer_callback'),
+('you''re not helping', 'frustration', 'I apologize for the frustration. Let me get you to someone who can help better. Would you like to speak with a pharmacist?', 'offer_callback'),
+('useless bot', 'frustration', 'I understand your frustration and I''m sorry. A CVS pharmacist can help you directly - would you like me to arrange a callback?', 'offer_callback'),
+('stupid bot', 'frustration', 'I''m sorry I couldn''t help. Let me connect you with our pharmacy team who can assist you better.', 'offer_callback'),
+('doesn''t work', 'frustration', 'I apologize for the difficulty. Let me connect you with someone who can help resolve this. Would you like a pharmacist callback?', 'offer_callback'),
+('broken', 'frustration', 'I''m sorry you''re having trouble. I can connect you with our pharmacy team right away. Would that help?', 'offer_callback'),
+
+-- Spam/Test
+('test', 'test', 'I''m here and ready to help! You can ask me about prescriptions, book a MinuteClinic appointment, or get general health information.', 'respond'),
+('hello', 'test', 'Hello! I''m CVS Care Companion. How can I help you today? I can check prescription status, help book appointments, or answer health questions.', 'respond'),
+('hi', 'test', 'Hi there! How can I assist you today?', 'respond'),
+('hey', 'test', 'Hey! What can I help you with?', 'respond'),
+('asdf', 'spam', 'I didn''t quite catch that. How can I help you today? I can assist with prescriptions, appointments, or health questions.', 'respond'),
+('aaaa', 'spam', 'I''m here to help! Feel free to ask about your prescriptions, book appointments, or get health information.', 'respond'),
+('...', 'spam', 'I''m ready when you are! What can I help you with today?', 'respond'),
+('???', 'spam', 'I''m CVS Care Companion. I can help with prescription status, refills, MinuteClinic appointments, and general health questions. What would you like to know?', 'respond'),
+('lol', 'spam', 'I''m here to help whenever you''re ready! What can I assist you with?', 'respond'),
+('haha', 'spam', 'Ready to help when you need me! Ask about prescriptions, appointments, or health questions.', 'respond'),
+
+-- Inappropriate (respond professionally, don''t engage)
+('shut up', 'inappropriate', 'I''m here to help with your healthcare needs. Is there something specific I can assist you with today?', 'respond'),
+('go away', 'inappropriate', 'I understand. If you need help later with prescriptions, appointments, or health questions, I''ll be here.', 'respond'),
+('hate you', 'inappropriate', 'I''m sorry to hear that. If there''s something specific I can help improve, please let me know. I''m here for your healthcare needs.', 'respond'),
+('you suck', 'inappropriate', 'I appreciate the feedback. If there''s a specific issue I can help resolve, I''d like to try. What can I assist you with?', 'respond');
+
+-- ============================================
 -- Summary
 -- ============================================
 -- Total records inserted:

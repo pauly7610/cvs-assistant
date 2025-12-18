@@ -1,5 +1,44 @@
 import { Intent } from "@/types";
 
+const ESCALATION_TRIGGERS: Record<string, { response: string; action: string }> = {
+  // Agent requests
+  "agent": { response: "I understand you'd like to speak with someone directly. I can connect you with a CVS pharmacist who can help. Would you like me to request a callback?", action: "offer_callback" },
+  "representative": { response: "I'd be happy to connect you with a CVS team member. Would you prefer to speak with a pharmacist, or would you like the MinuteClinic number?", action: "offer_callback" },
+  "human": { response: "I can arrange for a CVS pharmacist to call you back within 15 minutes. Would that work for you?", action: "offer_callback" },
+  "real person": { response: "Absolutely, I can connect you with our pharmacy team. Shall I request a callback?", action: "offer_callback" },
+  "talk to someone": { response: "Of course! I can connect you with a CVS pharmacist. Would you like a callback?", action: "offer_callback" },
+  "speak to someone": { response: "I'd be glad to help you reach our team. Would you like to speak with a pharmacist?", action: "offer_callback" },
+  "live agent": { response: "I can connect you with our pharmacy team right away. Would you like me to request a callback?", action: "offer_callback" },
+  "transfer": { response: "I can transfer you to a CVS pharmacist. They typically call back within 10-15 minutes.", action: "offer_callback" },
+  "manager": { response: "I can connect you with our pharmacy team who can address your concerns. Would that help?", action: "offer_callback" },
+  "supervisor": { response: "I can escalate your concern to our pharmacy team. Would you like a callback?", action: "offer_callback" },
+  // Frustration
+  "this is useless": { response: "I'm sorry I haven't been able to help. Let me connect you with a CVS pharmacist who can assist you directly.", action: "offer_callback" },
+  "you're not helping": { response: "I apologize for the frustration. Would you like to speak with a pharmacist?", action: "offer_callback" },
+  "useless bot": { response: "I understand your frustration. A CVS pharmacist can help you directly - would you like a callback?", action: "offer_callback" },
+  "stupid bot": { response: "I'm sorry I couldn't help. Let me connect you with our pharmacy team.", action: "offer_callback" },
+  "doesn't work": { response: "I apologize for the difficulty. Would you like a pharmacist callback?", action: "offer_callback" },
+  // Spam/Test
+  "test": { response: "I'm here and ready to help! Ask me about prescriptions, appointments, or health questions.", action: "respond" },
+  "asdf": { response: "I didn't quite catch that. How can I help you today?", action: "respond" },
+  "aaaa": { response: "I'm here to help! What can I assist you with?", action: "respond" },
+  "lol": { response: "I'm here whenever you're ready! What can I help with?", action: "respond" },
+  // Inappropriate
+  "shut up": { response: "I'm here to help with your healthcare needs. Is there something I can assist you with?", action: "respond" },
+  "go away": { response: "If you need help later with prescriptions or appointments, I'll be here.", action: "respond" },
+};
+
+export function checkEscalationTrigger(input: string): { response: string; action: string } | null {
+  const normalizedInput = input.toLowerCase().trim();
+  
+  for (const [trigger, data] of Object.entries(ESCALATION_TRIGGERS)) {
+    if (normalizedInput === trigger || normalizedInput.includes(trigger)) {
+      return data;
+    }
+  }
+  return null;
+}
+
 const EMERGENCY_KEYWORDS = [
   "chest pain",
   "trouble breathing",
